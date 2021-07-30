@@ -1,0 +1,30 @@
+{
+  "name": "white-board",
+  "version": "1.0.0",
+  "description": "web-socket study project which share drawing points in the multiple clients using express server.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wootra/white-board.git"
+  },
+  "keywords": [
+    "web",
+    "socket",
+    "drawing",
+    "javascript",
+    "express",
+    "ws"
+  ],
+  "author": "Songhyeon Jun (shjeon0730@gmail.com)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wootra/white-board/issues"
+  },
+  "homepage": "https://github.com/wootra/white-board#readme",
+  "devDependencies": {
+    "express": "^4.17.1"
+  }
+}
