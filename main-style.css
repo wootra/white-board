@@ -5,3 +5,7 @@
 #draw-clone {
 	border: 1px solid gray;
 }
+
+#draw-clone.active {
+	border: 2px solid red;
+}
