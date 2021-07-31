@@ -25,6 +25,10 @@
   },
   "homepage": "https://github.com/wootra/white-board#readme",
   "devDependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "http": "^0.0.1-security"
+  },
+  "dependencies": {
+    "websocket": "^1.0.34"
   }
 }

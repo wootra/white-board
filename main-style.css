@@ -9,3 +9,18 @@
 #draw-clone.active {
 	border: 2px solid red;
 }
+
+#connect-status {
+	width: 1rem;
+	height: 1rem;
+	border-radius: 50%;
+	background-color: gray;
+}
+
+#connect-status.active {
+	background-color: green;
+}
+
+#connect-status.error {
+	background-color: red;
+}
