@@ -11,6 +11,7 @@ import { command } from './utils/utils.js';
 
 let chatInput;
 let isTyping = false;
+let chattingList;
 
 let typeStatus;
 let connectBtn;
@@ -24,6 +25,7 @@ const isConnected = () => serverConnection !== null;
 
 const sendChattingMsg = msg => {
 	if (isConnected()) {
+		console.log('testToSend', command(COMMANDS.CHAT_INPUT, { msg }));
 		serverConnection.send(
 			JSON.stringify(command(COMMANDS.CHAT_INPUT, { msg }))
 		);
@@ -33,11 +35,12 @@ const sendChattingMsg = msg => {
 
 const onChat = e => {
 	const textToSend = chatInput.value;
-	console.log('typing: ', e);
+	// console.log('typing: ', e);
 	// if e is enter, then call send chatting message
-	const isEnter = false;
+	const isEnter = e.code === 'Enter';
 	if (isEnter) {
 		sendChattingMsg(textToSend);
+		chatInput.value = '';
 	} else if (isTyping === false) {
 		// send packet
 		if (isConnected()) {
@@ -51,7 +54,6 @@ const onChat = e => {
 			sendChattingMsg(textToSend); //to tell the user canceled typing.
 		}
 	}
-	console.log('testToSend' + textToSend);
 };
 
 let handlingInterval = false;
@@ -99,6 +101,12 @@ const onMessage = data => {
 			return;
 		} else if (data.cmd === COMMANDS.CHAT_INPUT) {
 			//should add chat text in the thread unless the text is empty
+			console.log('input msg:', data.msg);
+			const aMsg = document.createElement('p');
+			aMsg.className = 'msg-line';
+			aMsg.innerText = data.msg;
+			chattingList.appendChild(aMsg);
+			chattingList.scrollTop = chattingList.scrollHeight;
 			typeStatus.innerText = '';
 			return;
 		}
@@ -116,6 +124,14 @@ const onConnectBtnClicked = e => {
 	});
 };
 
+// const onResize = (screenW, screenH) => {
+// 	let w, h;
+// 	w = h = screenW > screenH ? screenH : screenW;
+// 	console.log('size is:', w);
+// 	mouseDrawingCanvasResize(w, h);
+// 	serverDrawingCanvasResize(w, h);
+// };
+
 window.addEventListener('load', () => {
 	chatInput = document.getElementById('chat');
 
@@ -123,8 +139,14 @@ window.addEventListener('load', () => {
 	setupDrawingArea('drawing-container', 'drawing');
 	typeStatus = document.getElementById('type-status');
 	connectBtn = document.getElementById('connect-btn');
-	connStatus = document.getElementById('connect-status');
-	chatInput.addEventListener('keyup', onChat);
+	connStatus = document.getElementById('connect-btn');
+	chattingList = document.getElementById('chatting-list');
 
+	chatInput.addEventListener('keyup', onChat);
 	connectBtn.addEventListener('click', onConnectBtnClicked);
+	// window.addEventListener('resize', e => {
+	// 	console.log(e);
+	// 	onResize(e.currentTarget.innerWidth, e.currentTarget.innerHeight);
+	// });
+	// onResize(window.innerWidth, window.innerHeight);
 });

@@ -41,15 +41,9 @@ wsServer.on('request', req => {
 	console.log(new Date() + ' Connection accepted.');
 
 	conn.on('message', msg => {
-		console.log('message:', msg);
-		// wsServer.broadcast(msg);
-		// conn.emit('message', 'my-data');
-		// conn.sendUTF('recv');
 		if (msg.type === 'utf8') {
 			clients.forEach(c => {
 				const len = c.send(msg.utf8Data);
-				console.log('message:', msg, '/', len);
-				// c.sendUtf8(msg)
 			});
 		}
 	});

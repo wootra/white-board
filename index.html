@@ -24,15 +24,31 @@
 		<![endif]-->
 		<div class="container">
 			<div id="drawing-container">
-				<canvas id="drawing" width="200" height="200"></canvas>
-				<canvas id="draw-clone" width="200" height="200"></canvas>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					id="drawing"
+					width="200"
+					height="200"
+					viewBox="0 0 100 100"
+				></svg>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					id="draw-clone"
+					class="draw-clone"
+					width="200"
+					height="200"
+					viewBox="0 0 100 100"
+				></svg>
 			</div>
-			<div class="chatting">
+			<div id="chatting">
+				<div id="chatting-list"></div>
 				<div id="type-status"></div>
 				<input type="text" id="chat" />
 			</div>
-			<button id="connect-btn">connect</button>
-			<div id="connect-status"></div>
+			<div id="connection">
+				<button id="connect-btn" class="connect-btn">connect</button>
+				<div id="connect-status"></div>
+			</div>
 		</div>
 		<script src="main.js" async defer type="module"></script>
 	</body>

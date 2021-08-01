@@ -1,24 +1,37 @@
 import { COMMANDS } from '../utils/consts.js';
 
 let drawClone;
-let ctxDrawCloneArea;
-let cloneLastPt;
+/**
+ * @type {SVGPathElement}
+ */
+let pathElement;
+let lastPt;
+let tempVal;
 
 export const drawCanvasFromData = data => {
 	if (data.cmd === COMMANDS.START_DRAW) {
-		ctxDrawCloneArea = drawClone.getContext('2d');
 		drawClone.classList.add('active');
-		cloneLastPt = null;
+		lastPt = null;
+		pathElement = document.createElementNS(
+			'http://www.w3.org/2000/svg',
+			'polyline'
+		);
+		pathElement.setAttribute('stroke', 'black');
+		// pathElement.setAttribute('stroke-width', '2');
+		pathElement.setAttribute('fill', 'none');
+		drawClone.appendChild(pathElement);
+		tempVal = '';
 	} else if (data.cmd === COMMANDS.END_DRAW) {
 		drawClone.classList.remove('active');
 	} else {
-		if (cloneLastPt === null) {
-			cloneLastPt = data;
-			ctxDrawCloneArea.moveTo(cloneLastPt.x, cloneLastPt.y);
+		if (lastPt === null) {
+			lastPt = data;
+			tempVal += `${lastPt.x},${lastPt.y} ` + '';
+			pathElement.setAttribute('points', tempVal);
 		} else {
-			cloneLastPt = data;
-			ctxDrawCloneArea.lineTo(cloneLastPt.x, cloneLastPt.y);
-			ctxDrawCloneArea.stroke();
+			lastPt = data;
+			tempVal += `${lastPt.x},${lastPt.y} ` + '';
+			pathElement.setAttribute('points', tempVal);
 		}
 	}
 };
