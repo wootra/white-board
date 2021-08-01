@@ -30,7 +30,6 @@ export const connectToServer = (
 		onConnect && onConnect(ev.target);
 
 		client.onmessage = e => {
-			console.log('received from ev.target:', e, JSON.stringify(e.data));
 			if (typeof e.data === 'string') {
 				const msg = e.data;
 				onMessage && onMessage(JSON.parse(msg));
@@ -38,25 +37,5 @@ export const connectToServer = (
 				console.log('wrong type');
 			}
 		};
-	};
-
-	client.onmessage = e => {
-		console.log('received from client:', e, JSON.stringify(e.data));
-
-		if (typeof e.data === 'string') {
-			const msg = e.data;
-			for (const c in msg) {
-				if (c === '\n') {
-					const oneData = JSON.parse(buff.join(''));
-					console.log('received: ', oneData);
-					onMessage && onMessage(oneData);
-					buff = [];
-				} else {
-					buff.push(c);
-				}
-			}
-		} else {
-			console.log('wrong type');
-		}
 	};
 };

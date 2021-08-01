@@ -1,19 +1,10 @@
+import { COMMANDS, DRAW_STATUS } from '../utils/consts.js';
+import { command, pt } from '../utils/utils.js';
+
 const buffer = [];
-
-export const DRAW_STATUS = Object.freeze({
-	IDLE: 0,
-	DRAWING: 1,
-});
-
-export const COMMANDS = Object.freeze({
-	START_DRAW: 1,
-	END_DRAW: 2,
-});
 
 let drawingState = DRAW_STATUS.IDLE;
 let lastPt = { x: -1, y: -1 };
-export const pt = (x, y) => ({ x, y });
-export const command = cmd => ({ cmd });
 
 export const startDraw = (x, y) => {
 	console.log('startDraw');

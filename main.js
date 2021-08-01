@@ -1,92 +1,72 @@
+import { setupDrawingArea } from './canvas/canvas-from-mouse.js';
 import {
-	COMMANDS,
-	DRAW_STATUS,
-	endDraw,
-	getDrawingData,
-	getDrawingStatus,
-	saveDraw,
-	startDraw,
-} from './draw/draw.js';
+	drawCanvasFromData,
+	setDrawAreaInactive,
+	setupDrawAreaFromServer,
+} from './canvas/canvas-from-server.js';
+import { getDrawingData } from './draw/draw-buffer.js';
 import { connectToServer } from './socket/socket-main.js';
+import { COMMANDS } from './utils/consts.js';
+import { command } from './utils/utils.js';
 
 let chatInput;
-let drawingArea;
-let drawClone;
+let isTyping = false;
+
 let typeStatus;
 let connectBtn;
 let connStatus;
 let serverConnection = null;
 
-let ctxDrawingArea;
-let ctxDrawCloneArea;
-let lastPt;
-let cloneLastPt;
-
+let drawer = 'user' + parseInt(Math.random() * 100);
 let cloneThreadId = null;
 
-const convertXY = e => {
-	return [e.clientX - e.target.offsetTop, e.clientY - e.target.offsetLeft];
-};
+const isConnected = () => serverConnection !== null;
 
-const canvasMouseDown = e => {
-	const lastPt = convertXY(e);
-	startDraw(...lastPt);
-	ctxDrawingArea = drawingArea.getContext('2d');
-	ctxDrawingArea.moveTo(...lastPt);
-};
-
-const canvasMouseUp = e => {
-	lastPt = convertXY(e);
-	endDraw(...lastPt);
-	ctxDrawingArea.lineTo(...lastPt);
-	ctxDrawingArea.stroke();
-};
-
-const canvasMouseMove = e => {
-	lastPt = convertXY(e);
-	saveDraw(...lastPt);
-	if (getDrawingStatus() === DRAW_STATUS.DRAWING) {
-		ctxDrawingArea.lineTo(...lastPt);
-		ctxDrawingArea.stroke();
+const sendChattingMsg = msg => {
+	if (isConnected()) {
+		serverConnection.send(
+			JSON.stringify(command(COMMANDS.CHAT_INPUT, { msg }))
+		);
 	}
+	isTyping = false; //set false because when connection is restarted, should send typing message
 };
 
 const onChat = e => {
 	const textToSend = chatInput.value;
-	typeStatus.innerText = textToSend.length > 0 ? 'typeing...' : '';
+	console.log('typing: ', e);
+	// if e is enter, then call send chatting message
+	const isEnter = false;
+	if (isEnter) {
+		sendChattingMsg(textToSend);
+	} else if (isTyping === false) {
+		// send packet
+		if (isConnected()) {
+			serverConnection.send(JSON.stringify(command(COMMANDS.CHAT_TYPING)));
+			isTyping = true;
+		}
+	} else {
+		//isTyping == true
+		if (textToSend.length === 0) {
+			//deleted all of text
+			sendChattingMsg(textToSend); //to tell the user canceled typing.
+		}
+	}
 	console.log('testToSend' + textToSend);
 };
 
 let handlingInterval = false;
-const cloneImage = () => {
+const flushImageToServer = () => {
 	if (handlingInterval) return;
 
 	getDrawingData().then(buff => {
 		handlingInterval = true;
 		let data;
-		while ((data = buff.shift())) {
-			if (serverConnection) {
-				const d = JSON.stringify(data).replace(/\n/g) + '\n';
-				const size = serverConnection.send(d);
-				console.log('sending:', d, size);
+		if (serverConnection) {
+			while ((data = buff.shift())) {
+				data = { ...data, drawer };
+				const d = JSON.stringify(data);
+				serverConnection.send(d);
 			}
-
-			// if (data.cmd === COMMANDS.START_DRAW) {
-			// 	ctxDrawCloneArea = drawClone.getContext('2d');
-			// 	drawClone.classList.add('active');
-			// 	cloneLastPt = null;
-			// } else if (data.cmd === COMMANDS.END_DRAW) {
-			// 	drawClone.classList.remove('active');
-			// } else {
-			// 	if (cloneLastPt === null) {
-			// 		cloneLastPt = data;
-			// 		ctxDrawCloneArea.moveTo(cloneLastPt.x, cloneLastPt.y);
-			// 	} else {
-			// 		cloneLastPt = data;
-			// 		ctxDrawCloneArea.lineTo(cloneLastPt.x, cloneLastPt.y);
-			// 		ctxDrawCloneArea.stroke();
-			// 	}
-			// }
 		}
 		handlingInterval = false;
 	});
@@ -95,17 +75,14 @@ const cloneImage = () => {
 const onConnect = conn => {
 	serverConnection = conn;
 	connStatus.classList.add('active');
-	cloneThreadId = setInterval(cloneImage, 200);
-	console.log('connected with:', conn);
+	cloneThreadId = setInterval(flushImageToServer, 200);
 };
-
-const isConnected = () => serverConnection !== null;
 
 const onClose = () => {
 	connStatus.classList.remove('active');
 	connStatus.classList.remove('error');
 	serverConnection = null;
-	drawClone.classList.remove('active'); //if connection is closed, should be inactive
+	setDrawAreaInactive();
 	clearInterval(cloneThreadId);
 	cloneThreadId = null;
 };
@@ -116,23 +93,18 @@ const onError = err => {
 };
 
 const onMessage = data => {
-	console.log('received data');
-	if (data.cmd === COMMANDS.START_DRAW) {
-		ctxDrawCloneArea = drawClone.getContext('2d');
-		drawClone.classList.add('active');
-		cloneLastPt = null;
-	} else if (data.cmd === COMMANDS.END_DRAW) {
-		drawClone.classList.remove('active');
-	} else {
-		if (cloneLastPt === null) {
-			cloneLastPt = data;
-			ctxDrawCloneArea.moveTo(cloneLastPt.x, cloneLastPt.y);
-		} else {
-			cloneLastPt = data;
-			ctxDrawCloneArea.lineTo(cloneLastPt.x, cloneLastPt.y);
-			ctxDrawCloneArea.stroke();
+	if (data.cmd) {
+		if (data.cmd === COMMANDS.CHAT_TYPING) {
+			typeStatus.innerText = 'typeing...';
+			return;
+		} else if (data.cmd === COMMANDS.CHAT_INPUT) {
+			//should add chat text in the thread unless the text is empty
+			typeStatus.innerText = '';
+			return;
 		}
 	}
+
+	drawCanvasFromData(data);
 };
 
 const onConnectBtnClicked = e => {
@@ -146,14 +118,13 @@ const onConnectBtnClicked = e => {
 
 window.addEventListener('load', () => {
 	chatInput = document.getElementById('chat');
-	drawingArea = document.getElementById('drawing');
-	drawClone = document.getElementById('draw-clone');
+
+	setupDrawAreaFromServer('draw-clone');
+	setupDrawingArea('drawing-container', 'drawing');
 	typeStatus = document.getElementById('type-status');
 	connectBtn = document.getElementById('connect-btn');
 	connStatus = document.getElementById('connect-status');
 	chatInput.addEventListener('keyup', onChat);
-	drawingArea.addEventListener('mousedown', canvasMouseDown);
-	drawingArea.addEventListener('mouseup', canvasMouseUp);
-	drawingArea.addEventListener('mousemove', canvasMouseMove);
+
 	connectBtn.addEventListener('click', onConnectBtnClicked);
 });
