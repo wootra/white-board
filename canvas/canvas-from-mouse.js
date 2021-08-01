@@ -12,6 +12,11 @@ import { DRAW_STATUS } from '../utils/consts.js';
 let drawingArea;
 
 /**
+ * @type {HTMLOrSVGImageElement}
+ */
+let eventArea;
+
+/**
  * @type {SVGPathElement}
  */
 let pathElement;
@@ -75,10 +80,11 @@ const canvasMouseMove = e => {
 	lastPt = nextPt;
 };
 
-export const setupDrawingArea = (containerId, drawAreaId) => {
+export const setupDrawingArea = (containerId, drawAreaId, eventAreaId) => {
 	drawingContainer = document.getElementById(containerId);
 	drawingArea = document.getElementById(drawAreaId);
-	drawingArea.addEventListener('mousedown', canvasMouseDown);
-	drawingArea.addEventListener('mouseup', canvasMouseUp);
-	drawingArea.addEventListener('mousemove', canvasMouseMove);
+	eventArea = document.getElementById(eventAreaId);
+	eventArea.addEventListener('mousedown', canvasMouseDown);
+	eventArea.addEventListener('mouseup', canvasMouseUp);
+	eventArea.addEventListener('mousemove', canvasMouseMove);
 };

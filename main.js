@@ -124,19 +124,11 @@ const onConnectBtnClicked = e => {
 	});
 };
 
-// const onResize = (screenW, screenH) => {
-// 	let w, h;
-// 	w = h = screenW > screenH ? screenH : screenW;
-// 	console.log('size is:', w);
-// 	mouseDrawingCanvasResize(w, h);
-// 	serverDrawingCanvasResize(w, h);
-// };
-
 window.addEventListener('load', () => {
 	chatInput = document.getElementById('chat');
 
 	setupDrawAreaFromServer('draw-clone');
-	setupDrawingArea('drawing-container', 'drawing');
+	setupDrawingArea('drawing-container', 'drawing', 'draw-clone');
 	typeStatus = document.getElementById('type-status');
 	connectBtn = document.getElementById('connect-btn');
 	connStatus = document.getElementById('connect-btn');
@@ -144,9 +136,4 @@ window.addEventListener('load', () => {
 
 	chatInput.addEventListener('keyup', onChat);
 	connectBtn.addEventListener('click', onConnectBtnClicked);
-	// window.addEventListener('resize', e => {
-	// 	console.log(e);
-	// 	onResize(e.currentTarget.innerWidth, e.currentTarget.innerHeight);
-	// });
-	// onResize(window.innerWidth, window.innerHeight);
 });
