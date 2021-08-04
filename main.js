@@ -14,12 +14,18 @@ let isTyping = false;
 let chattingList;
 
 let typeStatus;
+/**
+ * @type {HTMLButtonElement}
+ */
 let connectBtn;
 let connStatus;
 let serverConnection = null;
 
 let drawer = 'user' + parseInt(Math.random() * 100);
 let cloneThreadId = null;
+
+const PROTOCOL = 'echo-protocol';
+const SERVER_URL = 'ws://localhost:8080/';
 
 const isConnected = () => serverConnection !== null;
 
@@ -87,6 +93,7 @@ const onClose = () => {
 	setDrawAreaInactive();
 	clearInterval(cloneThreadId);
 	cloneThreadId = null;
+	connectBtn.innerText = 'Connect';
 };
 
 const onError = err => {
@@ -94,12 +101,16 @@ const onError = err => {
 	console.log('error is received from server: ', err);
 };
 
+let readyStatus = null;
+const clients = [];
+
 const onMessage = data => {
 	if (data.cmd) {
-		if (data.cmd === COMMANDS.CHAT_TYPING) {
+		const cmd = data.cmd;
+		if (cmd === COMMANDS.CHAT_TYPING) {
 			typeStatus.innerText = 'typeing...';
 			return;
-		} else if (data.cmd === COMMANDS.CHAT_INPUT) {
+		} else if (cmd === COMMANDS.CHAT_INPUT) {
 			//should add chat text in the thread unless the text is empty
 			console.log('input msg:', data.msg);
 			const aMsg = document.createElement('p');
@@ -109,19 +120,33 @@ const onMessage = data => {
 			chattingList.scrollTop = chattingList.scrollHeight;
 			typeStatus.innerText = '';
 			return;
+		} else if (cmd === COMMANDS.REGISTER_CLIENTS) {
+			console.log(data);
+
+			return;
+		} else if (cmd === COMMANDS.REGISTER_MASTER) {
+			console.log(data);
+			const url = `ws://${data.conn.address}:${data.conn.port}`;
+			connectToServer(url, 'peer-to-peer');
+			return;
 		}
 	}
-
+	console.log('data:', data);
 	drawCanvasFromData(data);
 };
 
 const onConnectBtnClicked = e => {
-	connectToServer('ws://localhost:8080/', 'echo-protocol', {
-		onConnect,
-		onClose,
-		onMessage,
-		onError,
-	});
+	if (isConnected()) {
+		serverConnection.close();
+	} else {
+		connectToServer(SERVER_URL, PROTOCOL, {
+			onConnect,
+			onClose,
+			onMessage,
+			onError,
+		});
+		connectBtn.innerText = 'Disconnect';
+	}
 };
 
 window.addEventListener('load', () => {

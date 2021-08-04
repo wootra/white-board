@@ -26,18 +26,33 @@ const wsServer = new WebSocketServer({
 	autoAcceptConnections: false,
 });
 
-const buff = [];
 const clients = [];
 
-wsServer.on('request', req => {
-	console.log('request', req);
-	if (!originAllowed(req.origin)) {
-		req.reject(`origin ${req.origin} is not allowed`);
-		return;
-	}
+const acceptRequest = (req, protocol, origin) => {
+	const conn = req.accept(protocol, origin);
 
-	const conn = req.accept('echo-protocol', req.origin);
+	if (clients.length > 0) {
+		console.log('===socket info==');
+		console.log(conn.socket._peername);
+		console.log('==========');
+		clients[0].send(
+			JSON.stringify({
+				cmd: 99, //client info,
+				conn: conn.socket._peername,
+				temp: 'hey',
+			})
+		);
+		conn.send(
+			JSON.stringify({
+				cmd: 98, //client info,
+				conn: clients[0].socket._peername,
+				temp: 'hey',
+			})
+		);
+	}
 	clients.push(conn);
+	// console.log('===>\n', conn);
+
 	console.log(new Date() + ' Connection accepted.');
 
 	conn.on('message', msg => {
@@ -51,35 +66,19 @@ wsServer.on('request', req => {
 	conn.on('close', data => {
 		console.log('close', data);
 	});
+	return conn;
+};
+
+wsServer.on('request', req => {
+	if (!originAllowed(req.origin)) {
+		req.reject(`origin ${req.origin} is not allowed`);
+		return;
+	}
+
+	const conn = acceptRequest(req, 'echo-protocol', req.origin);
 });
 
 wsServer.on('connect', connectedClient => {
-	console.log('connect', connectedClient);
-
-	// connectedClient.on('request', req => {
-	// 	console.log('request', req);
-	// 	if (!originAllowed(req.origin)) {
-	// 		req.reject(`origin ${req.origin} is not allowed`);
-	// 		return;
-	// 	}
-
-	// 	const conn = req.accept('echo-protocol', req.origin);
-	// 	clients.push(conn);
-	// 	console.log(new Date() + ' Connection accepted.');
-
-	// 	conn.on('message', msg => {
-	// 		// wsServer.broadcast(msg);
-	// 		if (msg.type === 'utf8') {
-	// 			clients.forEach(c => {
-	// 				const len = c.sendUTF(msg);
-	// 				console.log('message:', msg, '/', len);
-	// 				// c.sendUtf8(msg)
-	// 			});
-	// 		}
-	// 	});
-
-	// 	conn.on('close', data => {
-	// 		console.log('close', data);
-	// 	});
-	// });
+	// console.log('connected', connectedClient);
+	console.log('================================================');
 });

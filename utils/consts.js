@@ -8,4 +8,6 @@ export const COMMANDS = Object.freeze({
 	END_DRAW: 2,
 	CHAT_TYPING: 3,
 	CHAT_INPUT: 4,
+	REGISTER_MASTER: 98,
+	REGISTER_CLIENTS: 99,
 });
