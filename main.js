@@ -107,6 +107,7 @@ const onError = err => {
 };
 
 const onMessage = data => {
+	console.log(data);
 	if (data.cmd) {
 		const cmd = data.cmd;
 		if (cmd === COMMANDS.CHAT_TYPING) {
@@ -151,6 +152,27 @@ const onMessage = data => {
 			console.log('REGISTER_INFO', data);
 			const { id, alias } = data;
 			cache.clientAliases[id] = alias;
+
+			// connectToServer(url, 'peer-to-peer');
+			return;
+		} else if (cmd === COMMANDS.MASTER_SHOULD_SHARE) {
+			console.log('MASTER_SHOULD_SHARE', data);
+			for (let otherClientId in cache.clientAliases) {
+				serverConnection.send(
+					JSON.stringify(
+						command(COMMANDS.REGISTER_INFO, {
+							id: otherClientId,
+							alias: cache.clientAliases[otherClientId],
+						})
+					)
+				);
+			}
+			return;
+		} else if (cmd === COMMANDS.CLIENT_CLOSED) {
+			console.log('CLIENT_CLOSED', data);
+			const { id } = data;
+			const { [id]: deleted, ...rest } = cache.clientAliases;
+			cache.clientAliases = rest;
 
 			// connectToServer(url, 'peer-to-peer');
 			return;

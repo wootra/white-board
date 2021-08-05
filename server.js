@@ -1,6 +1,18 @@
 // const express = require('express');
 const WebSocketServer = require('websocket').server;
 
+const COMMANDS = Object.freeze({
+	// START_DRAW: 1,
+	// END_DRAW: 2,
+	// CHAT_TYPING: 3,
+	// CHAT_INPUT: 4,
+	CLIENT_CLOSED: 95,
+	MASTER_SHOULD_SHARE: 96,
+	REGISTER_INFO: 97,
+	REGISTER_MASTER: 98,
+	REGISTER_SLAVE: 99,
+});
+
 const http = require('http');
 const port = 8080;
 const server = http.createServer((req, res) => {
@@ -29,13 +41,11 @@ const wsServer = new WebSocketServer({
 
 const cache = {
 	clients: [],
-	clientAliases: {}, //id to alias
-	clientObjects: {}, //id to object
 };
 
 const registerMsterPayload = info => {
 	return JSON.stringify({
-		cmd: 98, //client info,
+		cmd: COMMANDS.REGISTER_MASTER, //client info,
 		clientLevel: 0,
 		info,
 	});
@@ -43,7 +53,7 @@ const registerMsterPayload = info => {
 
 const registerSlavePayload = info => {
 	return JSON.stringify({
-		cmd: 99, //client info,
+		cmd: COMMANDS.REGISTER_SLAVE, //client info,
 		clientLevel: 1,
 		info,
 	});
@@ -58,7 +68,7 @@ const getUniqId = () => {
 	while (limit-- > 0) {
 		clientIdSeed++;
 		const clientId = clientPrefix * clientIdSeed;
-		if (!cache.clientAliases[clientId]) {
+		if (!cache.clients.find(c => c.id === clientId)) {
 			return clientId;
 		}
 	}
@@ -71,8 +81,33 @@ const acceptRequest = (req, protocol, origin) => {
 	try {
 		clientId = getUniqId();
 	} catch (e) {
+		console.log(e.message);
 		conn.close();
 	}
+
+	console.log(new Date() + ' Connection accepted.');
+
+	conn.on('message', msg => {
+		if (msg.type === 'utf8') {
+			cache.clients.forEach(c => {
+				const len = c.conn.send(msg.utf8Data);
+			});
+		}
+	});
+
+	conn.on('close', data => {
+		cache.clients = cache.clients.filter(c => c.id !== clientId);
+		if (masterId === clientId && cache.clients.length > 0) {
+			console.log('reassign master');
+			cache.clients[0].conn.send(registerMsterPayload({ id: clientId }));
+			for (let c of cache.clients) {
+				c.conn.send(
+					JSON.stringify({ cmd: COMMANDS.CLIENT_CLOSED, id: clientId })
+				);
+			}
+		}
+		console.log('close', data);
+	});
 
 	if (cache.clients.length === 0) {
 		//first client
@@ -80,36 +115,14 @@ const acceptRequest = (req, protocol, origin) => {
 		masterId = clientId;
 	} else {
 		conn.send(registerSlavePayload({ id: clientId }));
-	}
-	console.log(conn);
-
-	cache.clientAliases[clientId] = clientId;
-	cache.clientObjects[clientId] = conn;
-	cache.clients.push(conn);
-	// console.log('===>\n', conn);
-
-	console.log(new Date() + ' Connection accepted.');
-
-	conn.on('message', msg => {
-		if (msg.type === 'utf8') {
-			cache.clients.forEach(c => {
-				const len = c.send(msg.utf8Data);
-			});
-		}
-	});
-
-	conn.on('close', data => {
-		cache.clients = cache.clients.filter(
-			c => c !== cache.clientObjects[clientId]
+		cache.clients[0].conn.send(
+			JSON.stringify({
+				cmd: COMMANDS.MASTER_SHOULD_SHARE, //master should share all clients' info
+			})
 		);
-		cache.clientAliases[clientId] = null;
-		cache.clientObjects[clientId] = null;
-		if (masterId === clientId && cache.clients.length > 0) {
-			console.log('reassign master');
-			cache.clients[0].send(registerMsterPayload({ id: clientId }));
-		}
-		console.log('close', data);
-	});
+	}
+	cache.clients.push({ id: clientId, conn });
+
 	return conn;
 };
 
