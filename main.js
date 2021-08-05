@@ -17,6 +17,7 @@ let clientId;
 let cache = { clientAliases: {} };
 
 let typeStatus;
+let drawStatus;
 /**
  * @type {HTMLButtonElement}
  */
@@ -24,7 +25,6 @@ let connectBtn;
 let connStatus;
 let serverConnection = null;
 
-let drawer = 'user' + parseInt(Math.random() * 100);
 let cloneThreadId = null;
 
 const PROTOCOL = 'echo-protocol';
@@ -76,7 +76,7 @@ const flushImageToServer = () => {
 		let data;
 		if (serverConnection) {
 			while ((data = buff.shift())) {
-				data = { ...data, drawer };
+				data = { ...data, id: clientId };
 				const d = JSON.stringify(data);
 				serverConnection.send(d);
 			}
@@ -156,7 +156,16 @@ const onMessage = data => {
 			return;
 		}
 	}
+
 	console.log('data:', data);
+	const { id } = data;
+	const alias = cache.clientAliases[id];
+	if (data.cmd === COMMANDS.START_DRAW) {
+		drawStatus.innerText = `${alias} is drawing...`;
+	} else if (data.cmd === COMMANDS.END_DRAW) {
+		drawStatus.innerText = `${alias} drew the last touch`;
+	}
+
 	drawCanvasFromData(data);
 };
 
@@ -180,6 +189,7 @@ window.addEventListener('load', () => {
 	setupDrawAreaFromServer('draw-clone');
 	setupDrawingArea('drawing-container', 'drawing', 'draw-clone');
 	typeStatus = document.getElementById('type-status');
+	drawStatus = document.getElementById('drawing-status');
 	clientLevel = document.getElementById('client-level');
 	connectBtn = document.getElementById('connect-btn');
 	connStatus = document.getElementById('connect-btn');
