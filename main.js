@@ -12,6 +12,9 @@ import { command } from './utils/utils.js';
 let chatInput;
 let isTyping = false;
 let chattingList;
+let clientLevel;
+let clientId;
+let cache = { clientAliases: {} };
 
 let typeStatus;
 /**
@@ -33,7 +36,7 @@ const sendChattingMsg = msg => {
 	if (isConnected()) {
 		console.log('testToSend', command(COMMANDS.CHAT_INPUT, { msg }));
 		serverConnection.send(
-			JSON.stringify(command(COMMANDS.CHAT_INPUT, { msg }))
+			JSON.stringify(command(COMMANDS.CHAT_INPUT, { msg, id: clientId }))
 		);
 	}
 	isTyping = false; //set false because when connection is restarted, should send typing message
@@ -50,7 +53,9 @@ const onChat = e => {
 	} else if (isTyping === false) {
 		// send packet
 		if (isConnected()) {
-			serverConnection.send(JSON.stringify(command(COMMANDS.CHAT_TYPING)));
+			serverConnection.send(
+				JSON.stringify(command(COMMANDS.CHAT_TYPING, { id: clientId }))
+			);
 			isTyping = true;
 		}
 	} else {
@@ -101,33 +106,53 @@ const onError = err => {
 	console.log('error is received from server: ', err);
 };
 
-let readyStatus = null;
-const clients = [];
-
 const onMessage = data => {
 	if (data.cmd) {
 		const cmd = data.cmd;
 		if (cmd === COMMANDS.CHAT_TYPING) {
-			typeStatus.innerText = 'typeing...';
+			const { id } = data;
+			const alias = cache.clientAliases[id];
+			typeStatus.innerText = `${alias} is typeing...`;
 			return;
 		} else if (cmd === COMMANDS.CHAT_INPUT) {
 			//should add chat text in the thread unless the text is empty
-			console.log('input msg:', data.msg);
-			const aMsg = document.createElement('p');
-			aMsg.className = 'msg-line';
-			aMsg.innerText = data.msg;
-			chattingList.appendChild(aMsg);
-			chattingList.scrollTop = chattingList.scrollHeight;
+			console.log('input msg:', data);
+			if (data.msg.length > 0) {
+				const aMsg = document.createElement('p');
+				aMsg.className = 'msg-line';
+				const alias = cache.clientAliases[data.id];
+				aMsg.innerText = `${alias}: ${data.msg}`;
+				chattingList.appendChild(aMsg);
+				chattingList.scrollTop = chattingList.scrollHeight;
+			}
+
 			typeStatus.innerText = '';
 			return;
-		} else if (cmd === COMMANDS.REGISTER_CLIENTS) {
+		} else if (
+			cmd === COMMANDS.REGISTER_SLAVE ||
+			cmd === COMMANDS.REGISTER_MASTER
+		) {
 			console.log(data);
+			clientId = data.info.id;
+			const myAlias = 'my-alias' + parseInt(Math.random() * 10000);
+			cache.clientAliases[clientId] = `me (${myAlias})`;
 
+			clientLevel.innerText = data.clientLevel;
+			serverConnection.send(
+				JSON.stringify(
+					command(COMMANDS.REGISTER_INFO, {
+						id: clientId,
+						alias: myAlias,
+					})
+				)
+			);
 			return;
-		} else if (cmd === COMMANDS.REGISTER_MASTER) {
-			console.log(data);
-			const url = `ws://${data.conn.address}:${data.conn.port}`;
-			connectToServer(url, 'peer-to-peer');
+		} else if (cmd === COMMANDS.REGISTER_INFO) {
+			console.log('REGISTER_INFO', data);
+			const { id, alias } = data;
+			cache.clientAliases[id] = alias;
+
+			// connectToServer(url, 'peer-to-peer');
 			return;
 		}
 	}
@@ -155,6 +180,7 @@ window.addEventListener('load', () => {
 	setupDrawAreaFromServer('draw-clone');
 	setupDrawingArea('drawing-container', 'drawing', 'draw-clone');
 	typeStatus = document.getElementById('type-status');
+	clientLevel = document.getElementById('client-level');
 	connectBtn = document.getElementById('connect-btn');
 	connStatus = document.getElementById('connect-btn');
 	chattingList = document.getElementById('chatting-list');

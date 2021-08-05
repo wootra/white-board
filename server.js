@@ -1,5 +1,6 @@
 // const express = require('express');
 const WebSocketServer = require('websocket').server;
+
 const http = require('http');
 const port = 8080;
 const server = http.createServer((req, res) => {
@@ -26,44 +27,87 @@ const wsServer = new WebSocketServer({
 	autoAcceptConnections: false,
 });
 
-const clients = [];
+const cache = {
+	clients: [],
+	clientAliases: {}, //id to alias
+	clientObjects: {}, //id to object
+};
+
+const registerMsterPayload = info => {
+	return JSON.stringify({
+		cmd: 98, //client info,
+		clientLevel: 0,
+		info,
+	});
+};
+
+const registerSlavePayload = info => {
+	return JSON.stringify({
+		cmd: 99, //client info,
+		clientLevel: 1,
+		info,
+	});
+};
+
+const clientPrefix = parseInt(Math.random() * 1000000);
+let clientIdSeed = 1;
+let masterId = null;
+
+const getUniqId = () => {
+	let limit = 100;
+	while (limit-- > 0) {
+		clientIdSeed++;
+		const clientId = clientPrefix * clientIdSeed;
+		if (!cache.clientAliases[clientId]) {
+			return clientId;
+		}
+	}
+	throw Error('failed to create a uniq ID. please fix the algorithm.');
+};
 
 const acceptRequest = (req, protocol, origin) => {
 	const conn = req.accept(protocol, origin);
-
-	if (clients.length > 0) {
-		console.log('===socket info==');
-		console.log(conn.socket._peername);
-		console.log('==========');
-		clients[0].send(
-			JSON.stringify({
-				cmd: 99, //client info,
-				conn: conn.socket._peername,
-				temp: 'hey',
-			})
-		);
-		conn.send(
-			JSON.stringify({
-				cmd: 98, //client info,
-				conn: clients[0].socket._peername,
-				temp: 'hey',
-			})
-		);
+	let clientId;
+	try {
+		clientId = getUniqId();
+	} catch (e) {
+		conn.close();
 	}
-	clients.push(conn);
+
+	if (cache.clients.length === 0) {
+		//first client
+		conn.send(registerMsterPayload({ id: clientId }));
+		masterId = clientId;
+	} else {
+		conn.send(registerSlavePayload({ id: clientId }));
+	}
+	console.log(conn);
+
+	cache.clientAliases[clientId] = clientId;
+	cache.clientObjects[clientId] = conn;
+	cache.clients.push(conn);
 	// console.log('===>\n', conn);
 
 	console.log(new Date() + ' Connection accepted.');
 
 	conn.on('message', msg => {
 		if (msg.type === 'utf8') {
-			clients.forEach(c => {
+			cache.clients.forEach(c => {
 				const len = c.send(msg.utf8Data);
 			});
 		}
 	});
 
 	conn.on('close', data => {
+		cache.clients = cache.clients.filter(
+			c => c !== cache.clientObjects[clientId]
+		);
+		cache.clientAliases[clientId] = null;
+		cache.clientObjects[clientId] = null;
+		if (masterId === clientId && cache.clients.length > 0) {
+			console.log('reassign master');
+			cache.clients[0].send(registerMsterPayload({ id: clientId }));
+		}
 		console.log('close', data);
 	});
 	return conn;
